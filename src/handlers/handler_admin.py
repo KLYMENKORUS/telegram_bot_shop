@@ -41,6 +41,8 @@ class HandlerAdmin(Handler):
     def __init__(self, bot: Bot, dp: Dispatcher):
         super().__init__(bot, dp)
         self.__data_product = {}
+        self.__CONST_MARKUP = None
+        self.__CURRENT_CAT_ID = None
 
     # ********* OTHER FUNCTIONS *********
 
@@ -97,8 +99,12 @@ class HandlerAdmin(Handler):
 
         if callback.data == 'back_to_admin':
             await self.pressed_start_admin(callback)
+
         elif callback.data == 'back_to_category_list':
             await self.view_all_categories(callback)
+
+        elif callback.data == 'back_to_product_list':
+            await self.view_only_category(callback)
 
         await callback.answer()
 
@@ -143,6 +149,8 @@ class HandlerAdmin(Handler):
     async def view_all_categories(self, callback: CallbackQuery) -> None:
         """Просмотр всех категорий"""
 
+        self.__CONST_MARKUP = callback.data
+
         categories = await self.BD.all_categories()
 
         if categories:
@@ -160,9 +168,17 @@ class HandlerAdmin(Handler):
     async def view_only_category(self, callback: CallbackQuery) -> None:
         """Просмотр информации о категории а также ряд действий над ней"""
 
-        category_id = int(callback.data.split('_')[-1])
-        count_products = await self.BD.get_count_products()
-        category = await self.BD.get_category(category_id)
+        if callback.data.split('_')[-1].isdigit():
+            self.__CURRENT_CAT_ID = int(callback.data.split('_')[-1])
+
+        count_products = await self.BD.get_count_products(self.__CURRENT_CAT_ID)
+        category = await self.BD.get_category(self.__CURRENT_CAT_ID)
+
+        # Настройки для вывода reply_markup
+        all_products_category = await self.BD.all_products(self.__CURRENT_CAT_ID)
+        reply_markup = self.keyboards.view_only_category_menu(self.__CURRENT_CAT_ID)\
+            if self.__CONST_MARKUP == 'list_category' \
+            else self.keyboards.view_all_products(*all_products_category)
 
         await callback.message.edit_text(
             MESSAGES.get('view_category').format(
@@ -171,7 +187,7 @@ class HandlerAdmin(Handler):
                 category_is_active=category.is_active,
                 category_count=count_products
             ),
-            reply_markup=self.keyboards.view_only_category_menu(category_id)
+            reply_markup=reply_markup
         )
         await callback.answer()
 
@@ -302,15 +318,32 @@ class HandlerAdmin(Handler):
                     reply_markup=self.keyboards.start_admin_menu()
                 )
 
+        await callback.answer()
+
     # ********** END ADD NEW PRODUCT **********
 
     # ********** VIEW PRODUCT **********
 
-    async def view_all_products(self):
-        # сделать пагинацию категорий и товаров
-        # сделать команду на просмотр всех товаров через категорию и
-        # просмотр одного товара
-        ...
+    async def view_only_product(self, callback: CallbackQuery) -> None:
+        """Просмотр конкретного продукта"""
+
+        product_id = int(callback.data.split('_')[-1])
+
+        current_product = await self.BD.get_product(product_id)
+        category = await self.BD.get_category(current_product.category_id)
+
+        await callback.message.edit_text(
+            MESSAGES.get('preview_product').format(
+                title=current_product.title,
+                category_name=category.name,
+                name=current_product.name,
+                price=current_product.price,
+                quantity=current_product.quantity
+            ),
+            reply_markup=self.keyboards.view_only_product(product_id)
+        )
+
+        await callback.answer()
 
     def register_handler(self):
 
@@ -331,7 +364,7 @@ class HandlerAdmin(Handler):
         self.dp.register_message_handler(self.add_category, state=AddCategory.category_name)
 
         self.dp.register_callback_query_handler(self.view_all_categories,
-                                                lambda c: c.data == 'list_category')
+                                                lambda c: c.data.startswith('list_'))
         self.dp.register_callback_query_handler(self.view_only_category,
                                                 lambda c: c.data.startswith('only_cat'))
         self.dp.register_callback_query_handler(self.delete_category,
@@ -355,3 +388,7 @@ class HandlerAdmin(Handler):
         self.dp.register_callback_query_handler(
             self.save_or_cancel_product,
             lambda c: c.data.startswith('repeal_save') | c.data.startswith('save'))
+        self.dp.register_callback_query_handler(
+            self.view_only_product, lambda c: c.data.startswith('product_')
+        )
+
