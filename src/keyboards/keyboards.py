@@ -13,14 +13,18 @@ class Keyboards:
         self.markup: Optional[InlineKeyboardMarkup] = None
         self.DB = DBManager()
 
-    def set_inline_btn(self, name: str, callback: str, step: int = 0, quantity: int = 0) -> InlineKeyboardButton:
+    def set_inline_btn(
+            self, name: str, callback: str, step: int = 0, quantity: int = 0
+    ) -> InlineKeyboardButton:
         """
         Создает и возвращает кнопку по входным параметрам
         """
         _ = KEYBOARD.update({name: name}) if name not in KEYBOARD.keys()\
             else KEYBOARD.get(f'{name}')
 
-        return InlineKeyboardButton(text=KEYBOARD.get(f'{name}'), callback_data=callback)
+        return InlineKeyboardButton(
+            text=KEYBOARD.get(f'{name}'), callback_data=callback
+        )
 
     # ********** Client keyboard **********
 
@@ -70,6 +74,18 @@ class Keyboards:
 
         return self.markup
 
+    def view_all_products(self, *products) -> InlineKeyboardMarkup:
+        """Создает разметку кнопок для вывода всех товаров и возвращает её"""
+
+        self.markup = InlineKeyboardMarkup()
+
+        for product in products:
+            self.markup.add(self.set_inline_btn(
+                product.name, callback=f'product_{product.name}_{product.id}'))
+
+        self.markup.row(self.set_inline_btn('<<', callback='list_category'))
+        return self.markup
+
     def back_main_menu(self) -> InlineKeyboardMarkup:
         """Создает кнопку для возврата в главное меню"""
 
@@ -96,16 +112,36 @@ class Keyboards:
 
         return self.markup
 
-    def view_only_category_menu(self, category_id: int) -> InlineKeyboardMarkup:
-        """Создает разметки кнопок для подменю категории"""
+    def set_view_only_item(
+            self, value_btn: str, callback_id: str,
+            callback_back: str, value_btn_back: str
+    ) -> InlineKeyboardMarkup:
+        """Создает разметки кнопок для отображения подменю"""
 
         self.markup = InlineKeyboardMarkup()
         self.markup.add(
-            self.set_inline_btn('DELETE_CATEGORY', callback=f'delete_category_{category_id}'),
+            self.set_inline_btn(value_btn, callback=callback_id)
         )
-        self.markup.row(self.set_inline_btn('<<', callback='back_to_category_list'))
-
+        self.markup.row(
+            self.set_inline_btn(value_btn_back, callback=callback_back)
+        )
         return self.markup
+
+    def view_only_category_menu(self, category_id: int) -> InlineKeyboardMarkup:
+        """Создает разметки кнопок для подменю категории"""
+
+        return self.set_view_only_item(
+            value_btn='DELETE_CATEGORY', callback_id=f'delete_category_{category_id}',
+            callback_back='back_to_category_list', value_btn_back='<<'
+        )
+
+    def view_only_product(self, product_id) -> InlineKeyboardMarkup:
+        """Создает разметки кнопок для подменю товара"""
+
+        return self.set_view_only_item(
+            value_btn='DELETE_PRODUCT', callback_id=f'delete_product_{product_id}',
+            callback_back='back_to_product_list', value_btn_back='<<'
+        )
 
     def preview_product(self) -> InlineKeyboardMarkup:
         """Создает разметки кнопок для сохранения/отмены в бд продукта"""
