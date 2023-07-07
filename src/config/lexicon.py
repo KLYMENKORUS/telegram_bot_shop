@@ -30,6 +30,7 @@ KEYBOARD: dict[str, str] = {
     'ADD_PRODUCT': 'Добавить товар',
     'LIST_PRODUCT': emojize('📋 Список товаров'),
     'SAVE_PRODUCT': emojize('✅ Сохранить'),
+    'DELETE_PRODUCT': emojize('❌ Удалить товар'),
     'CANCEL': emojize('❌ Отменить')
 }
 
