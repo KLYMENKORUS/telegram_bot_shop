@@ -50,11 +50,22 @@ class DBMethods:
                 all_objects = await session.execute(select(model))
                 return [obj[0] for obj in all_objects.fetchall()]
 
-    async def get_count_obj(self, model):
+    async def filter_all_obj(self, model, **kwargs):
+        """ПОлучение всех объектов с бд по данной модели по фильтру"""
+        async with self.db_session() as session:
+            async with session.begin():
+                filtered_objects = await session.execute(
+                    select(model).filter_by(category_id=kwargs.get('category_id'))
+                )
+                return [obj[0] for obj in filtered_objects.fetchall()]
+
+    async def get_count_obj(self, model, **kwargs):
         """Получение количества объектов"""
         async with self.db_session() as session:
             async with session.begin():
-                count = await session.execute(select(func.count(model.id)))
+                count = await session.execute(
+                    select(func.count(model.id)).
+                    filter_by(category_id=kwargs.get('category_id')))
                 return count.scalars().first()
 
     async def delete_obj(self, model, **kwargs):
@@ -94,9 +105,9 @@ class DBManager(metaclass=Singleton):
         """Вывод всех категорий"""
         return await self.__crud_db.get_all_obj(Category)
 
-    async def get_count_products(self) -> int:
+    async def get_count_products(self, category_id: int) -> int:
         """Получение количества продуктов"""
-        return await self.__crud_db.get_count_obj(Product)
+        return await self.__crud_db.get_count_obj(Product, category_id=category_id)
 
     # ********** END OPERATIONS WITH CATEGORIES **********
 
@@ -111,5 +122,13 @@ class DBManager(metaclass=Singleton):
             quantity=kwargs.get('quantity'),
             category_id=kwargs.get('category_id')
         )
+
+    async def all_products(self, category_id: int) -> List[Product]:
+        """Вывод всех категорий"""
+        return await self.__crud_db.filter_all_obj(
+            Product, category_id=category_id)
+
+    async def get_product(self, product_id: int) -> Product:
+        return await self.__crud_db.get_obj(Product, id=product_id)
 
 
