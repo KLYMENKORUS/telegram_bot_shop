@@ -179,6 +179,8 @@ preview_product = """
 <b>Количество товарa</b>: {quantity}
 """
 failed_to_save_product = '{}, возникла ошибка при добавлении товара 🤷'
+delete_product = 'Товар, успешно удален с бд!'
+delete_product_failed = 'Ошибка удаления товара!'
 
 
 MESSAGES: dict[str, str] = {
@@ -201,6 +203,8 @@ MESSAGES: dict[str, str] = {
     'write_quantity': write_quantity,
     'preview_product': preview_product,
     'failed_to_save_product': failed_to_save_product,
+    'delete_product': delete_product,
+    'delete_product_failed': delete_product_failed,
     'trading_store': trading_store,
     'product_order': product_order,
     'order': order,

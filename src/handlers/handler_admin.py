@@ -97,14 +97,13 @@ class HandlerAdmin(Handler):
     async def pressed_back_btn(self, callback: CallbackQuery) -> None:
         """Реализует возврат"""
 
-        if callback.data == 'back_to_admin':
-            await self.pressed_start_admin(callback)
-
-        elif callback.data == 'back_to_category_list':
-            await self.view_all_categories(callback)
-
-        elif callback.data == 'back_to_product_list':
-            await self.view_only_category(callback)
+        match callback.data:
+            case 'back_to_admin':
+                await self.pressed_start_admin(callback)
+            case 'back_to_category_list':
+                await self.view_all_categories(callback)
+            case 'back_to_product_list':
+                await self.view_only_category(callback)
 
         await callback.answer()
 
@@ -173,13 +172,14 @@ class HandlerAdmin(Handler):
 
         count_products = await self.BD.get_count_products(self.__CURRENT_CAT_ID)
         category = await self.BD.get_category(self.__CURRENT_CAT_ID)
+        all_products_category = await self.BD.all_products(self.__CURRENT_CAT_ID)
 
         # Настройки для вывода reply_markup
-        all_products_category = await self.BD.all_products(self.__CURRENT_CAT_ID)
-        reply_markup = self.keyboards.view_only_category_menu(self.__CURRENT_CAT_ID)\
-            if self.__CONST_MARKUP == 'list_category' \
-            else self.keyboards.view_all_products(*all_products_category)
-
+        match self.__CONST_MARKUP:
+            case 'list_category':
+                reply_markup = self.keyboards.view_only_category_menu(self.__CURRENT_CAT_ID)
+            case _:
+                reply_markup = self.keyboards.view_all_products(*all_products_category)
         await callback.message.edit_text(
             MESSAGES.get('view_category').format(
                 category_name=category.name,
@@ -345,6 +345,22 @@ class HandlerAdmin(Handler):
 
         await callback.answer()
 
+    # ********** DELETE PRODUCT **********
+    async def delete_product(self, callback: CallbackQuery):
+        """Удаление товара"""
+
+        product_id = int(callback.data.split('_')[-1])
+
+        try:
+            await self.BD.delete_product(product_id)
+            await callback.answer(MESSAGES.get('delete_product'))
+            await self.pressed_start_admin(callback)
+
+        except IntegrityError as e:
+            logging.error(f'Error deleted product {e}')
+            await callback.answer(MESSAGES.get('delete_product_failed'))
+            await self.pressed_start_admin(callback)
+
     def register_handler(self):
 
         # ********** OTHER FUNCTIONS **********
@@ -391,4 +407,6 @@ class HandlerAdmin(Handler):
         self.dp.register_callback_query_handler(
             self.view_only_product, lambda c: c.data.startswith('product_')
         )
+        self.dp.register_callback_query_handler(
+            self.delete_product, lambda c: c.data.startswith('delete_product'))
 

@@ -131,4 +131,8 @@ class DBManager(metaclass=Singleton):
     async def get_product(self, product_id: int) -> Product:
         return await self.__crud_db.get_obj(Product, id=product_id)
 
+    async def delete_product(self, product_id: int) -> Product:
+        """Удаление товара с бд"""
+        return await self.__crud_db.delete_obj(Product, id=product_id)
+
 
