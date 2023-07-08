@@ -179,7 +179,7 @@ class HandlerAdmin(Handler):
             case 'list_category':
                 reply_markup = self.keyboards.view_only_category_menu(self.__CURRENT_CAT_ID)
             case _:
-                reply_markup = self.keyboards.view_all_products(*all_products_category)
+                reply_markup = self.keyboards.view_all_products(*all_products_category, role='admin')
         await callback.message.edit_text(
             MESSAGES.get('view_category').format(
                 category_name=category.name,

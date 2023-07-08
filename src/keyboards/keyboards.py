@@ -61,10 +61,12 @@ class Keyboards:
 
         self.markup = InlineKeyboardMarkup()
         callback = 'back_to_admin' if action is None else 'cancel_add_product'
+        callback_cat = 'select_cat' if role is None else 'only_cat'
 
         for category in categories:
-            self.markup.add(self.set_inline_btn(category.name,
-                                                callback=f'only_cat_{category.name}_{category.id}'))
+            self.markup.add(self.set_inline_btn(
+                category.name,
+                callback=f'{callback_cat}_{category.name}_{category.id}'))
 
         if role is None:
             self.markup.row(self.set_inline_btn('<<', callback='back'),
@@ -74,7 +76,7 @@ class Keyboards:
 
         return self.markup
 
-    def view_all_products(self, *products) -> InlineKeyboardMarkup:
+    def view_all_products(self, *products, role: str = None) -> InlineKeyboardMarkup:
         """Создает разметку кнопок для вывода всех товаров и возвращает её"""
 
         self.markup = InlineKeyboardMarkup()
@@ -83,7 +85,12 @@ class Keyboards:
             self.markup.add(self.set_inline_btn(
                 product.name, callback=f'product_{product.name}_{product.id}'))
 
-        self.markup.row(self.set_inline_btn('<<', callback='list_category'))
+        match role:
+            case 'client':
+                self.markup.row(self.set_inline_btn('<<', callback='back'))
+            case 'admin':
+                self.markup.row(self.set_inline_btn('<<', callback='list_category'))
+
         return self.markup
 
     def back_main_menu(self) -> InlineKeyboardMarkup:
