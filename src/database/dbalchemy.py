@@ -41,10 +41,13 @@ class Singleton(type):
 class DBMethods:
     """Интерфейс для реализации работы с данными в бд"""
 
+    # ********** CONNECT TO DB ********
     __engine = create_async_engine(DATABASE_URL, future=True, echo=True)
     __async_session_maker = async_sessionmaker(
         __engine, expire_on_commit=False, class_=AsyncSession
     )
+
+    # ********** ALL OPERATIONS **********
 
     @connect_session_to_database(__async_session_maker)
     async def add(self, model, session: AsyncSession, **kwargs):
@@ -89,6 +92,7 @@ class DBMethods:
             delete(model).filter_by(id=kwargs.get('id')).returning(model.id))
         return category.scalars().first()
 
+    # ********** ORDERS OPERATIONS **********
     @connect_session_to_database(__async_session_maker)
     async def select_order_quantity(self, session: AsyncSession, **kwargs) -> Order:
         """Возвращает количество товара в заказе"""
@@ -98,7 +102,7 @@ class DBMethods:
         return result.scalars().first()
 
     @connect_session_to_database(__async_session_maker)
-    async def update_order_value(self, session: AsyncSession, **kwargs):
+    async def update_order_value(self, session: AsyncSession, **kwargs) -> None:
         """
         Обновляет данные указанной позиции заказа
         в соответствии с номером товара - rownum
@@ -109,7 +113,7 @@ class DBMethods:
         )
 
     @connect_session_to_database(__async_session_maker)
-    async def update_product_value(self, session: AsyncSession, **kwargs):
+    async def update_product_value(self, session: AsyncSession, **kwargs) -> None:
         """
         Обновляет количество товара на складе
         в соответствии с номером товара - rownum
@@ -118,6 +122,14 @@ class DBMethods:
             update(Product).filter_by(id=kwargs.get('id')).
             values(quantity=kwargs.get('quantity'))
         )
+
+    @connect_session_to_database(__async_session_maker)
+    async def count_rows_order(self, session: AsyncSession) -> int:
+        """Возвращает количество позиций в заказе"""
+        result = await session.execute(
+            select(func.count(Order))
+        )
+        return result.scalars().first()
 
 
 class DBManager(metaclass=Singleton):
@@ -138,9 +150,8 @@ class DBManager(metaclass=Singleton):
 
     async def __update_quantity_product_in_order(self, product_id: int):
         """Обновление количества товара в заказе"""
-        quantity_order = await self.__crud_db.select_order_quantity(
-            product_id=product_id)
-        quantity_order = quantity_order.quantity + 1
+        quantity_order = await self.select_order_quantity(product_id)
+        quantity_order += 1
         await self.__crud_db.update_order_value(
             product_id=product_id, quantity=quantity_order)
 
@@ -195,10 +206,10 @@ class DBManager(metaclass=Singleton):
     # ********** END OPERATIONS WITH PRODUCTS **********
 
     # ********** OPERATIONS WITH ORDERS **********
-    async def add_orders(self, quantity: int, product_id: int, user_id: int):
+    async def add_orders(self, quantity: int, product_id: int, user_id: int) -> None:
         """Метод заполнения заказа"""
 
-        all_id_products = await self.__crud_db.get_all_obj(Order)
+        all_id_products = await self.select_all_product_order()
 
         if product_id in arr.array('i', (product.product_id for product in all_id_products)):
             await self.__update_quantity_product_in_order(product_id)
@@ -213,6 +224,23 @@ class DBManager(metaclass=Singleton):
                 data=datetime.now()
             )
             await self.__update_product_quantity(product_id)
+
+    async def count_rows_order(self) -> int:
+        """Возвращает количество позиций в заказе"""
+        return await self.__crud_db.count_rows_order()
+
+    async def select_all_product_order(self) -> List[Order]:
+        """получаем список всех товаров в заказе"""
+        return await self.__crud_db.get_all_obj(Order)
+
+    async def select_order_quantity(self, product_id: int) -> int:
+        """
+        Возвращает количество товара из заказа
+        в соответствии с номером товара - rownum
+        """
+        select_order = await self.__crud_db.select_order_quantity(
+            product_id=product_id)
+        return select_order.quantity
 
 
 

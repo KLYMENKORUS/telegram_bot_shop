@@ -1,3 +1,4 @@
+import array as arr
 from aiogram import Bot, Dispatcher
 from aiogram.types import CallbackQuery
 from handlers import Handler
@@ -70,6 +71,37 @@ class HandlerAllCallback(Handler):
         )
         await callback.answer()
 
+    # ********** ORDERS **********
+    async def pressed_btn_order(self, callback: CallbackQuery) -> None:
+        """Обрабатывает входящие нажатия на кнопку 'Заказ'"""
+
+        self.step = 0
+
+        all_products = await self.BD.select_all_product_order()
+        count = arr.array('i', (product.id for product in all_products))
+        quantity = await self.BD.select_order_quantity(count[self.step])
+
+        await self.send_callback_order(callback, count[self.step], quantity)
+
+        await callback.answer()
+
+    async def send_callback_order(
+            self, callback: CallbackQuery, product_id: int, quantity: int
+    ) -> None:
+        """Отправляет в ответ пользователю еготекущий заказ"""
+        current_order_product = await self.BD.get_product(product_id)
+
+        await callback.message.edit_text(
+            MESSAGES.get('order').format(
+                self.step + 1,
+                current_order_product.name,
+                current_order_product.title,
+                current_order_product.price,
+                quantity
+            ),
+            reply_markup=self.keyboards.orders_menu(self.step, quantity)
+        )
+
     def register_handler(self):
         # *********** Главное меню **********
         self.dp.register_callback_query_handler(
@@ -91,3 +123,6 @@ class HandlerAllCallback(Handler):
             self.view_all_product,
             lambda c: c.data.startswith('select_cat')
         )
+        self.dp.register_callback_query_handler(self.pressed_btn_order, lambda c: c.data == 'order')
+        # if self.BD.count_rows_order() > 0:
+        #     ...

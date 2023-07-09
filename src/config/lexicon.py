@@ -16,11 +16,11 @@ KEYBOARD: dict[str, str] = {
     'NEXT_STEP': emojize('▶️'),
     'ORDER': emojize('✅ ЗАКАЗ'),
     'X': emojize('❌'),
-    'DOUWN': emojize('🔽'),
+    'DOWN': emojize('🔽'),
     'AMOUNT_PRODUCT': COUNT,
     'AMOUNT_ORDERS': COUNT,
     'UP': emojize('🔼'),
-    'APPLAY': '✅ Оформить заказ',
+    'APPLY': '✅ Оформить заказ',
     'COPY': '©️',
     'MAIN_MENU': 'Назад в главное меню',
     'HELP': emojize(':person_facepalming: Помощь'),
@@ -89,12 +89,12 @@ settings = """
     KEYBOARD['<<'],
     KEYBOARD['>>'],
     KEYBOARD['UP'],
-    KEYBOARD['DOUWN'],
+    KEYBOARD['DOWN'],
     KEYBOARD['NEXT_STEP'],
     KEYBOARD['BACK_STEP'],
     KEYBOARD['X'],
     KEYBOARD['ORDER'],
-    KEYBOARD['APPLAY'],
+    KEYBOARD['APPLY'],
     KEYBOARD['COPY'],
 )
 
@@ -113,6 +113,7 @@ Cтоимость: {price} uah
 
 # ответ пользователю при посещении блока с заказом
 order = """
+<b>Позиция в заказе № </b> <i>{}</i>
 
 <i>Название:</i> <b>{}</b>
 
@@ -123,11 +124,11 @@ order = """
 <i>Количество позиций:</i> <b>{} ед.</b> 
 """
 
-order_number = """
-
-<b>Позиция в заказе № </b> <i>{}</i>
-
-"""
+# order_number = """
+#
+# <b>Позиция в заказе № </b> <i>{}</i>
+#
+# """
 
 # ответ пользователю, когда заказа нет
 no_orders = """
@@ -208,7 +209,7 @@ MESSAGES: dict[str, str] = {
     'trading_store': trading_store,
     'product_order': product_order,
     'order': order,
-    'order_number': order_number,
+    # 'order_number': order_number,
     'no_orders': no_orders,
     'applay': applay,
     'settings': settings

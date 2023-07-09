@@ -76,6 +76,29 @@ class Keyboards:
 
         return self.markup
 
+    def orders_menu(self, step: int, quantity: int) -> InlineKeyboardMarkup:
+        """
+        Создает разметку кнопок в заказе товара и возвращает разметку
+        """
+
+        self.markup = InlineKeyboardMarkup()
+        itm_btn_1 = self.set_inline_btn('X', 'remove', step, quantity)
+        itm_btn_2 = self.set_inline_btn('DOWN', 'down', step, quantity)
+        itm_btn_3 = self.set_inline_btn('AMOUNT_PRODUCT', 'amount_product', step, quantity)
+        itm_btn_4 = self.set_inline_btn('UP', 'up', step, quantity)
+
+        itm_btn_5 = self.set_inline_btn('BACK_STEP', 'back_step', step, quantity)
+        itm_btn_6 = self.set_inline_btn('AMOUNT_ORDERS', 'amount_orders', step, quantity)
+        itm_btn_7 = self.set_inline_btn('NEXT_STEP', 'next_step', step, quantity)
+        itm_btn_8 = self.set_inline_btn('APPLY', 'apply', step, quantity)
+        itm_btn_9 = self.set_inline_btn('<<', 'back', step, quantity)
+        # рассположение кнопок в меню
+        self.markup.row(itm_btn_1, itm_btn_2, itm_btn_3, itm_btn_4)
+        self.markup.row(itm_btn_5, itm_btn_6, itm_btn_7)
+        self.markup.row(itm_btn_9, itm_btn_8)
+
+        return self.markup
+
     def view_all_products(self, *products, role: str = None) -> InlineKeyboardMarkup:
         """Создает разметку кнопок для вывода всех товаров и возвращает её"""
 
