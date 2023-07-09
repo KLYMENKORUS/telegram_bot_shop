@@ -1,6 +1,6 @@
+import array as arr
 from datetime import datetime
 from typing import List
-
 from sqlalchemy.ext.asyncio import create_async_engine, \
     async_sessionmaker, AsyncSession
 from sqlalchemy import insert, select, func, delete, update
@@ -122,6 +122,23 @@ class DBManager(metaclass=Singleton):
             self.engine, expire_on_commit=False, class_=AsyncSession)
         self.__crud_db = DBMethods(self.async_session_maker)
 
+    # ********** OTHER OPERATIONS WITH DATABASE **********
+    async def __update_product_quantity(self, product_id: int):
+        """Обновление количества товара в бд"""
+
+        quantity_product = await self.get_product(product_id)
+        quantity_product = quantity_product.quantity - 1
+        await self.__crud_db.update_product_value(
+            id=product_id, quantity=quantity_product)
+
+    async def __update_quantity_product_in_order(self, product_id: int):
+        """Обновление количества товара в заказе"""
+        quantity_order = await self.__crud_db.select_order_quantity(
+            product_id=product_id)
+        quantity_order = quantity_order.quantity + 1
+        await self.__crud_db.update_order_value(
+            product_id=product_id, quantity=quantity_order)
+
     # ********** OPERATIONS WITH CATEGORIES **********
 
     async def add_category(self, name: str) -> Category:
@@ -178,14 +195,9 @@ class DBManager(metaclass=Singleton):
 
         all_id_products = await self.__crud_db.get_all_obj(Order)
 
-        if product_id in [product.product_id for product in all_id_products]:
-            quantity_order = await self.__crud_db.select_order_quantity(product_id=product_id)
-            quantity_order = quantity_order.quantity + 1
-            await self.__crud_db.update_order_value(product_id=product_id, quantity=quantity_order)
-
-            quantity_product = await self.get_product(product_id)
-            quantity_product = quantity_product.quantity - 1
-            await self.__crud_db.update_product_value(id=product_id, quantity=quantity_product)
+        if product_id in arr.array('i', (product.product_id for product in all_id_products)):
+            await self.__update_quantity_product_in_order(product_id)
+            await self.__update_product_quantity(product_id)
 
         else:
             await self.__crud_db.add(
@@ -195,10 +207,7 @@ class DBManager(metaclass=Singleton):
                 user_id=user_id,
                 data=datetime.now()
             )
-
-            quantity_product = await self.get_product(product_id)
-            quantity_product = quantity_product.quantity - 1
-            await self.__crud_db.update_product_value(id=product_id, quantity=quantity_product)
+            await self.__update_product_quantity(product_id)
 
 
 
