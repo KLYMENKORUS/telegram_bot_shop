@@ -1,11 +1,25 @@
 import array as arr
 from datetime import datetime
+from functools import wraps
 from typing import List
 from sqlalchemy.ext.asyncio import create_async_engine, \
     async_sessionmaker, AsyncSession
 from sqlalchemy import insert, select, func, delete, update
 from src.config import DATABASE_URL
 from src.database.tables import Category, Product, Order
+
+
+# ********** DECORATORS **********
+def connect_session_to_database(db_session):
+    def connect(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            async with db_session() as session:
+                async with session.begin():
+                    return await func(*args, session, **kwargs)
+
+        return wrapper
+    return connect
 
 
 class Singleton(type):
@@ -27,89 +41,83 @@ class Singleton(type):
 class DBMethods:
     """Интерфейс для реализации работы с данными в бд"""
 
-    def __init__(self, db_session) -> None:
-        self.db_session = db_session
+    __engine = create_async_engine(DATABASE_URL, future=True, echo=True)
+    __async_session_maker = async_sessionmaker(
+        __engine, expire_on_commit=False, class_=AsyncSession
+    )
 
-    async def add(self, model, **kwargs):
+    @connect_session_to_database(__async_session_maker)
+    async def add(self, model, session: AsyncSession, **kwargs):
         """Добавление новой записи в бд"""
-        async with self.db_session() as session:
-            async with session.begin():
-                new_object = await session.execute(insert(model).values(kwargs))
-                return new_object.scalars().first()
+        new_object = await session.execute(insert(model).values(kwargs))
+        return new_object.scalars().first()
 
-    async def get_obj(self, model, **kwargs):
+    @connect_session_to_database(__async_session_maker)
+    async def get_obj(self, model, session: AsyncSession, **kwargs):
         """Получение текущего объекта с бд"""
-        async with self.db_session() as session:
-            async with session.begin():
-                get_object = await session.execute(select(model).filter_by(id=kwargs.get('id')))
-                return get_object.scalars().first()
+        get_object = await session.execute(
+            select(model).filter_by(id=kwargs.get('id')))
+        return get_object.scalars().first()
 
-    async def get_all_obj(self, model):
+    @connect_session_to_database(__async_session_maker)
+    async def get_all_obj(self, model, session: AsyncSession):
         """Получение всех объектов с бд по данной модели"""
-        async with self.db_session() as session:
-            async with session.begin():
-                all_objects = await session.execute(select(model))
-                return [obj[0] for obj in all_objects.fetchall()]
+        all_objects = await session.execute(select(model))
+        return [obj[0] for obj in all_objects.fetchall()]
 
-    async def filter_all_obj(self, model, **kwargs):
-        """ПОлучение всех объектов с бд по данной модели по фильтру"""
-        async with self.db_session() as session:
-            async with session.begin():
-                filtered_objects = await session.execute(
-                    select(model).filter_by(category_id=kwargs.get('category_id'))
-                )
-                return [obj[0] for obj in filtered_objects.fetchall()]
+    @connect_session_to_database(__async_session_maker)
+    async def filter_all_obj(self, model, session: AsyncSession, **kwargs):
+        """Пoлучение всех объектов с бд по данной модели по фильтру"""
+        filtered_objects = await session.execute(
+            select(model).filter_by(category_id=kwargs.get('category_id'))
+            )
+        return [obj[0] for obj in filtered_objects.fetchall()]
 
-    async def get_count_obj(self, model, **kwargs):
+    @connect_session_to_database(__async_session_maker)
+    async def get_count_obj(self, model, session: AsyncSession, **kwargs):
         """Получение количества объектов"""
-        async with self.db_session() as session:
-            async with session.begin():
-                count = await session.execute(
-                    select(func.count(model.id)).
-                    filter_by(category_id=kwargs.get('category_id')))
-                return count.scalars().first()
+        count = await session.execute(
+            select(func.count(model.id)).
+            filter_by(category_id=kwargs.get('category_id'))
+        )
+        return count.scalars().first()
 
-    async def delete_obj(self, model, **kwargs):
+    @connect_session_to_database(__async_session_maker)
+    async def delete_obj(self, model, session: AsyncSession, **kwargs):
         """Удаление объектов с бд"""
-        async with self.db_session() as session:
-            async with session.begin():
-                category = await session.execute(
-                    delete(model).filter_by(id=kwargs.get('id')).returning(model.id))
-                return category.scalars().first()
+        category = await session.execute(
+            delete(model).filter_by(id=kwargs.get('id')).returning(model.id))
+        return category.scalars().first()
 
-    async def select_order_quantity(self, **kwargs) -> Order:
+    @connect_session_to_database(__async_session_maker)
+    async def select_order_quantity(self, session: AsyncSession, **kwargs) -> Order:
         """Возвращает количество товара в заказе"""
-        async with self.db_session() as session:
-            async with session.begin():
-                result = await session.execute(
-                    select(Order).
-                    filter_by(product_id=kwargs.get('product_id'))
-                )
-                return result.scalars().first()
+        result = await session.execute(
+            select(Order).filter_by(product_id=kwargs.get('product_id'))
+            )
+        return result.scalars().first()
 
-    async def update_order_value(self, **kwargs):
+    @connect_session_to_database(__async_session_maker)
+    async def update_order_value(self, session: AsyncSession, **kwargs):
         """
         Обновляет данные указанной позиции заказа
         в соответствии с номером товара - rownum
         """
-        async with self.db_session() as session:
-            async with session.begin():
-                await session.execute(
-                    update(Order).filter_by(product_id=kwargs.get('product_id')).
-                    values(quantity=kwargs.get('quantity'))
-                )
+        await session.execute(
+            update(Order).filter_by(product_id=kwargs.get('product_id')).
+            values(quantity=kwargs.get('quantity'))
+        )
 
-    async def update_product_value(self, **kwargs):
+    @connect_session_to_database(__async_session_maker)
+    async def update_product_value(self, session: AsyncSession, **kwargs):
         """
         Обновляет количество товара на складе
         в соответствии с номером товара - rownum
         """
-        async with self.db_session() as session:
-            async with session.begin():
-                await session.execute(
-                    update(Product).filter_by(id=kwargs.get('id')).
-                    values(quantity=kwargs.get('quantity'))
-                )
+        await session.execute(
+            update(Product).filter_by(id=kwargs.get('id')).
+            values(quantity=kwargs.get('quantity'))
+        )
 
 
 class DBManager(metaclass=Singleton):
@@ -117,10 +125,7 @@ class DBManager(metaclass=Singleton):
     Класс менеджер для работы с БД
     """
     def __init__(self):
-        self.engine = create_async_engine(DATABASE_URL, future=True, echo=True)
-        self.async_session_maker = async_sessionmaker(
-            self.engine, expire_on_commit=False, class_=AsyncSession)
-        self.__crud_db = DBMethods(self.async_session_maker)
+        self.__crud_db = DBMethods()
 
     # ********** OTHER OPERATIONS WITH DATABASE **********
     async def __update_product_quantity(self, product_id: int):
