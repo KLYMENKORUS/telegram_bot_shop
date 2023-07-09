@@ -81,9 +81,10 @@ class Keyboards:
 
         self.markup = InlineKeyboardMarkup()
 
+        call_product = 'client_product' if role == 'client' else 'product'
         for product in products:
             self.markup.add(self.set_inline_btn(
-                product.name, callback=f'product_{product.name}_{product.id}'))
+                product.name, callback=f'{call_product}_{product.name}_{product.id}'))
 
         match role:
             case 'client':

@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import List
 
 from sqlalchemy.ext.asyncio import create_async_engine, \
     async_sessionmaker, AsyncSession
-from sqlalchemy import insert, select, func, delete
+from sqlalchemy import insert, select, func, delete, update
 from src.config import DATABASE_URL
-from src.database.tables import Category, Product
+from src.database.tables import Category, Product, Order
 
 
 class Singleton(type):
@@ -76,6 +77,40 @@ class DBMethods:
                     delete(model).filter_by(id=kwargs.get('id')).returning(model.id))
                 return category.scalars().first()
 
+    async def select_order_quantity(self, **kwargs) -> Order:
+        """Возвращает количество товара в заказе"""
+        async with self.db_session() as session:
+            async with session.begin():
+                result = await session.execute(
+                    select(Order).
+                    filter_by(product_id=kwargs.get('product_id'))
+                )
+                return result.scalars().first()
+
+    async def update_order_value(self, **kwargs):
+        """
+        Обновляет данные указанной позиции заказа
+        в соответствии с номером товара - rownum
+        """
+        async with self.db_session() as session:
+            async with session.begin():
+                await session.execute(
+                    update(Order).filter_by(product_id=kwargs.get('product_id')).
+                    values(quantity=kwargs.get('quantity'))
+                )
+
+    async def update_product_value(self, **kwargs):
+        """
+        Обновляет количество товара на складе
+        в соответствии с номером товара - rownum
+        """
+        async with self.db_session() as session:
+            async with session.begin():
+                await session.execute(
+                    update(Product).filter_by(id=kwargs.get('id')).
+                    values(quantity=kwargs.get('quantity'))
+                )
+
 
 class DBManager(metaclass=Singleton):
     """
@@ -134,5 +169,38 @@ class DBManager(metaclass=Singleton):
     async def delete_product(self, product_id: int) -> Product:
         """Удаление товара с бд"""
         return await self.__crud_db.delete_obj(Product, id=product_id)
+
+    # ********** END OPERATIONS WITH PRODUCTS **********
+
+    # ********** OPERATIONS WITH ORDERS **********
+    async def add_orders(self, quantity: int, product_id: int, user_id: int):
+        """Метод заполнения заказа"""
+
+        all_id_products = await self.__crud_db.get_all_obj(Order)
+
+        if product_id in [product.product_id for product in all_id_products]:
+            quantity_order = await self.__crud_db.select_order_quantity(product_id=product_id)
+            quantity_order = quantity_order.quantity + 1
+            await self.__crud_db.update_order_value(product_id=product_id, quantity=quantity_order)
+
+            quantity_product = await self.get_product(product_id)
+            quantity_product = quantity_product.quantity - 1
+            await self.__crud_db.update_product_value(id=product_id, quantity=quantity_product)
+
+        else:
+            await self.__crud_db.add(
+                Order,
+                quantity=quantity,
+                product_id=product_id,
+                user_id=user_id,
+                data=datetime.now()
+            )
+
+            quantity_product = await self.get_product(product_id)
+            quantity_product = quantity_product.quantity - 1
+            await self.__crud_db.update_product_value(id=product_id, quantity=quantity_product)
+
+
+
 
 
