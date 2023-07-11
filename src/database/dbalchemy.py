@@ -204,7 +204,7 @@ class DBManager(metaclass=Singleton):
         )
 
     async def all_products(self, category_id: int) -> List[Product]:
-        """Вывод всех категорий"""
+        """Вывод всех продуктов"""
         return await self.__crud_db.filter_all_obj(
             Product, category_id=category_id)
 
