@@ -1,6 +1,8 @@
-import array as arr
+import logging
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import CallbackQuery
+from contextlib import suppress
 from handlers import Handler
 from config import MESSAGES, KEYBOARD
 
@@ -77,13 +79,18 @@ class HandlerAllCallback(Handler):
 
         self.step = 0
 
-        all_products = await self.BD.select_all_product_order()
-        count = arr.array('i', (product.id for product in all_products))
-        quantity = await self.BD.select_order_quantity(count[self.step])
+        with suppress(IndexError):
+            count = await self.BD.select_all_product_id()
+            quantity = await self.BD.select_order_quantity(count[self.step])
 
-        await self.send_callback_order(callback, count[self.step], quantity)
-
-        await callback.answer()
+        if await self.BD.count_rows_order():
+            await self.send_callback_order(callback, count[self.step], quantity)
+        else:
+            await callback.answer(
+                MESSAGES.get('no_orders').
+                format(callback.from_user.first_name),
+                show_alert=True
+            )
 
     async def send_callback_order(
             self, callback: CallbackQuery, product_id: int, quantity: int
@@ -124,5 +131,3 @@ class HandlerAllCallback(Handler):
             lambda c: c.data.startswith('select_cat')
         )
         self.dp.register_callback_query_handler(self.pressed_btn_order, lambda c: c.data == 'order')
-        # if self.BD.count_rows_order() > 0:
-        #     ...
