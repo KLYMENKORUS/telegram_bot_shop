@@ -127,7 +127,7 @@ class DBMethods:
     async def count_rows_order(self, session: AsyncSession) -> int:
         """Возвращает количество позиций в заказе"""
         result = await session.execute(
-            select(func.count(Order))
+            select(func.count(Order.product_id))
         )
         return result.scalars().first()
 
@@ -147,6 +147,18 @@ class DBManager(metaclass=Singleton):
         quantity_product = quantity_product.quantity - 1
         await self.__crud_db.update_product_value(
             id=product_id, quantity=quantity_product)
+
+    async def __search_product_in_order(self, all_products: arr.array, product_id: int,
+                                        left: int, right: int) -> bool | None:
+        """Поиск товара в заказе"""
+        midd = (left + right) // 2
+
+        if all_products[midd] == product_id:
+            return True
+        elif product_id < all_products[midd]:
+            await self.__search_product_in_order(all_products, product_id, left, midd - 1)
+        else:
+            await self.__search_product_in_order(all_products, product_id, midd + 1, right)
 
     async def __update_quantity_product_in_order(self, product_id: int):
         """Обновление количества товара в заказе"""
@@ -209,9 +221,13 @@ class DBManager(metaclass=Singleton):
     async def add_orders(self, quantity: int, product_id: int, user_id: int) -> None:
         """Метод заполнения заказа"""
 
-        all_id_products = await self.select_all_product_order()
+        all_id_products = await self.select_all_product_id()
+        left, right = (0, len(all_id_products) - 1)
+        search_product = await self.__search_product_in_order(
+            all_id_products, product_id, left, right
+        )
 
-        if product_id in arr.array('i', (product.product_id for product in all_id_products)):
+        if search_product:
             await self.__update_quantity_product_in_order(product_id)
             await self.__update_product_quantity(product_id)
 
@@ -232,6 +248,11 @@ class DBManager(metaclass=Singleton):
     async def select_all_product_order(self) -> List[Order]:
         """получаем список всех товаров в заказе"""
         return await self.__crud_db.get_all_obj(Order)
+
+    async def select_all_product_id(self) -> arr.array:
+        """Получение со списка товаров в заказе, список id товаров"""
+        all_products = await self.select_all_product_order()
+        return arr.array('i', (product.product_id for product in all_products))
 
     async def select_order_quantity(self, product_id: int) -> int:
         """
