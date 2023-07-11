@@ -140,7 +140,7 @@ class DBManager(metaclass=Singleton):
         self.__crud_db = DBMethods()
 
     # ********** OTHER OPERATIONS WITH DATABASE **********
-    async def __update_product_quantity(self, product_id: int):
+    async def update_product_value(self, product_id: int):
         """Обновление количества товара в бд"""
 
         quantity_product = await self.get_product(product_id)
@@ -149,18 +149,21 @@ class DBManager(metaclass=Singleton):
             id=product_id, quantity=quantity_product)
 
     async def __search_product_in_order(self, all_products: arr.array, product_id: int,
-                                        left: int, right: int) -> bool | None:
+                                        left: int, right: int) -> bool:
         """Поиск товара в заказе"""
+        if left > right:
+            return False
+
         midd = (left + right) // 2
 
-        if all_products[midd] == product_id:
+        if all_products[midd] == product_id and all_products:
             return True
         elif product_id < all_products[midd]:
             await self.__search_product_in_order(all_products, product_id, left, midd - 1)
         else:
             await self.__search_product_in_order(all_products, product_id, midd + 1, right)
 
-    async def __update_quantity_product_in_order(self, product_id: int):
+    async def update_order_value(self, product_id: int):
         """Обновление количества товара в заказе"""
         quantity_order = await self.select_order_quantity(product_id)
         quantity_order += 1
@@ -228,8 +231,8 @@ class DBManager(metaclass=Singleton):
         )
 
         if search_product:
-            await self.__update_quantity_product_in_order(product_id)
-            await self.__update_product_quantity(product_id)
+            await self.update_order_value(product_id)
+            await self.update_product_value(product_id)
 
         else:
             await self.__crud_db.add(
@@ -239,7 +242,7 @@ class DBManager(metaclass=Singleton):
                 user_id=user_id,
                 data=datetime.now()
             )
-            await self.__update_product_quantity(product_id)
+            await self.update_product_value(product_id)
 
     async def count_rows_order(self) -> int:
         """Возвращает количество позиций в заказе"""

@@ -12,6 +12,7 @@ class HandlerAllCallback(Handler):
     def __init__(self, bot: Bot, dp: Dispatcher):
         super().__init__(bot, dp)
         self.step = 0  # шаг в заказе
+        self.__PRODUCT_ID = None
 
     async def pressed_btn_info(self, callback: CallbackQuery) -> None:
         """
@@ -109,6 +110,26 @@ class HandlerAllCallback(Handler):
             reply_markup=self.keyboards.orders_menu(self.step, quantity)
         )
 
+    async def pressed_btn_up(self, callback: CallbackQuery) -> None:
+        """
+        Обработка нажатия кнопки увеличения
+        количества определенного товара в заказе
+        """
+
+        count = await self.BD.select_all_product_id()
+        quantity_order = await self.BD.select_order_quantity(count[self.step])
+
+        product = await self.BD.get_product(count[self.step])
+        quantity_product = product.quantity
+
+        if quantity_product > 0:
+            quantity_order += 1; quantity_product -= 1
+
+            await self.BD.update_order_value(count[self.step])
+            await self.BD.update_product_value(count[self.step])
+
+        await self.send_callback_order(callback, count[self.step], quantity_order)
+
     def register_handler(self):
         # *********** Главное меню **********
         self.dp.register_callback_query_handler(
@@ -131,3 +152,4 @@ class HandlerAllCallback(Handler):
             lambda c: c.data.startswith('select_cat')
         )
         self.dp.register_callback_query_handler(self.pressed_btn_order, lambda c: c.data == 'order')
+        self.dp.register_callback_query_handler(self.pressed_btn_up, lambda c: c.data == 'up')
