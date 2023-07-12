@@ -37,4 +37,5 @@ class HandlerInlineQuery(Handler):
         )
 
     def register_handler(self):
-        self.dp.register_callback_query_handler(self.pressed_btn_product, lambda c: True)
+        self.dp.register_callback_query_handler(
+            self.pressed_btn_product, lambda c: c.data.startswith('client_product'))
