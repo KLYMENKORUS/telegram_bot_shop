@@ -12,7 +12,7 @@ class HandlerAllCallback(Handler):
     def __init__(self, bot: Bot, dp: Dispatcher):
         super().__init__(bot, dp)
         self.step = 0  # шаг в заказе
-        self.__PRODUCT_ID = None
+        self.__AMOUNT_ORDERS = None
 
     async def pressed_btn_info(self, callback: CallbackQuery) -> None:
         """
@@ -78,13 +78,15 @@ class HandlerAllCallback(Handler):
     async def pressed_btn_order(self, callback: CallbackQuery) -> None:
         """Обрабатывает входящие нажатия на кнопку 'Заказ'"""
 
+        self.__AMOUNT_ORDERS = await self.BD.count_rows_order()
+
         self.step = 0
 
         with suppress(IndexError):
             count = await self.BD.select_all_product_id()
             quantity = await self.BD.select_order_quantity(count[self.step])
 
-        if await self.BD.count_rows_order():
+        if self.__AMOUNT_ORDERS:
             await self.send_callback_order(callback, count[self.step], quantity)
         else:
             await callback.answer(
@@ -96,7 +98,7 @@ class HandlerAllCallback(Handler):
     async def send_callback_order(
             self, callback: CallbackQuery, product_id: int, quantity: int
     ) -> None:
-        """Отправляет в ответ пользователю еготекущий заказ"""
+        """Отправляет в ответ пользователю его текущий заказ"""
         current_order_product = await self.BD.get_product(product_id)
 
         await callback.message.edit_text(
@@ -107,7 +109,7 @@ class HandlerAllCallback(Handler):
                 current_order_product.price,
                 quantity
             ),
-            reply_markup=self.keyboards.orders_menu(self.step, quantity)
+            reply_markup=self.keyboards.orders_menu(self.step, quantity, self.__AMOUNT_ORDERS)
         )
 
     async def pressed_btn_up(self, callback: CallbackQuery) -> None:
@@ -125,8 +127,28 @@ class HandlerAllCallback(Handler):
         if quantity_product > 0:
             quantity_order += 1; quantity_product -= 1
 
-            await self.BD.update_order_value(count[self.step])
-            await self.BD.update_product_value(count[self.step])
+            await self.BD.update_order_value(count[self.step], quantity_order)
+            await self.BD.update_product_value(count[self.step], quantity_product)
+
+        await self.send_callback_order(callback, count[self.step], quantity_order)
+
+    async def pressed_btn_down(self, callback: CallbackQuery) -> None:
+        """
+        Обработка нажатия кнопки увеличения
+        количества определенного товара в заказе
+        """
+
+        count = await self.BD.select_all_product_id()
+        quantity_order = await self.BD.select_order_quantity(count[self.step])
+
+        product = await self.BD.get_product(count[self.step])
+        quantity_product = product.quantity
+
+        if quantity_product > 0:
+            quantity_order -= 1; quantity_product += 1
+
+            await self.BD.update_order_value(count[self.step], quantity_order)
+            await self.BD.update_product_value(count[self.step], quantity_product)
 
         await self.send_callback_order(callback, count[self.step], quantity_order)
 
@@ -153,3 +175,4 @@ class HandlerAllCallback(Handler):
         )
         self.dp.register_callback_query_handler(self.pressed_btn_order, lambda c: c.data == 'order')
         self.dp.register_callback_query_handler(self.pressed_btn_up, lambda c: c.data == 'up')
+        self.dp.register_callback_query_handler(self.pressed_btn_down, lambda c: c.data == 'down')

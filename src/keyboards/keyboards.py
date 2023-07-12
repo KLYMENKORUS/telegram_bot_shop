@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import KEYBOARD
@@ -14,13 +15,20 @@ class Keyboards:
         self.DB = DBManager()
 
     def set_inline_btn(
-            self, name: str, callback: str, step: int = 0, quantity: int = 0
+            self, name: str, callback: str, step: int = 0, quantity: int = 0,
+            amount_orders: int = None
     ) -> InlineKeyboardButton:
         """
         Создает и возвращает кнопку по входным параметрам
         """
         _ = KEYBOARD.update({name: name}) if name not in KEYBOARD.keys()\
             else KEYBOARD.get(f'{name}')
+
+        match name:
+            case 'AMOUNT_PRODUCT':
+                KEYBOARD.update({'AMOUNT_PRODUCT': f'{quantity}'})
+            case 'AMOUNT_ORDERS':
+                KEYBOARD.update({'AMOUNT_ORDERS': f'{step + 1} из {str(amount_orders)}'})
 
         return InlineKeyboardButton(
             text=KEYBOARD.get(f'{name}'), callback_data=callback
@@ -76,7 +84,7 @@ class Keyboards:
 
         return self.markup
 
-    def orders_menu(self, step: int, quantity: int) -> InlineKeyboardMarkup:
+    def orders_menu(self, step: int, quantity: int, amount_orders: int = None) -> InlineKeyboardMarkup:
         """
         Создает разметку кнопок в заказе товара и возвращает разметку
         """
@@ -88,7 +96,7 @@ class Keyboards:
         itm_btn_4 = self.set_inline_btn('UP', 'up', step, quantity)
 
         itm_btn_5 = self.set_inline_btn('BACK_STEP', 'back_step', step, quantity)
-        itm_btn_6 = self.set_inline_btn('AMOUNT_ORDERS', 'amount_orders', step, quantity)
+        itm_btn_6 = self.set_inline_btn('AMOUNT_ORDERS', 'amount_orders', step, quantity, amount_orders)
         itm_btn_7 = self.set_inline_btn('NEXT_STEP', 'next_step', step, quantity)
         itm_btn_8 = self.set_inline_btn('APPLY', 'apply', step, quantity)
         itm_btn_9 = self.set_inline_btn('<<', 'back', step, quantity)
