@@ -124,6 +124,15 @@ class DBMethods:
         )
 
     @connect_session_to_database(__async_session_maker)
+    async def delete_product_order(self, session: AsyncSession, **kwargs):
+        """Удаление конкретного товара с бд"""
+        result = await session.execute(
+            delete(Order).filter_by(product_id=kwargs.get('product_id')).
+            returning(Order.id)
+        )
+        return result.scalars().first()
+
+    @connect_session_to_database(__async_session_maker)
     async def count_rows_order(self, session: AsyncSession) -> int:
         """Возвращает количество позиций в заказе"""
         result = await session.execute(
@@ -209,6 +218,11 @@ class DBManager(metaclass=Singleton):
     async def get_product(self, product_id: int) -> Product:
         return await self.__crud_db.get_obj(Product, id=product_id)
 
+    async def select_product_quantity(self, product_id: int) -> int:
+        """Возвращает текущее количество товара на складе"""
+        product_quantity = await self.get_product(product_id)
+        return product_quantity.quantity
+
     async def delete_product(self, product_id: int) -> Product:
         """Удаление товара с бд"""
         return await self.__crud_db.delete_obj(Product, id=product_id)
@@ -230,8 +244,8 @@ class DBManager(metaclass=Singleton):
             quantity_order += 1
             await self.update_order_value(product_id, quantity_order)
 
-            quantity_product = await self.get_product(product_id)
-            quantity_product = quantity_product.quantity - 1
+            quantity_product = await self.select_product_quantity(product_id)
+            quantity_product -= 1
             await self.update_product_value(product_id, quantity_product)
 
         else:
@@ -243,8 +257,8 @@ class DBManager(metaclass=Singleton):
                 data=datetime.now()
             )
 
-            quantity_product = await self.get_product(product_id)
-            quantity_product = quantity_product.quantity - 1
+            quantity_product = await self.select_product_quantity(product_id)
+            quantity_product -= 1
             await self.update_product_value(product_id, quantity_product)
 
     async def count_rows_order(self) -> int:
@@ -268,6 +282,10 @@ class DBManager(metaclass=Singleton):
         select_order = await self.__crud_db.select_order_quantity(
             product_id=product_id)
         return select_order.quantity
+
+    async def delete_product_order(self, product_id: int) -> Order:
+        """Удаление конкретного товара с бд"""
+        return await self.__crud_db.delete_product_order(product_id=product_id)
 
 
 

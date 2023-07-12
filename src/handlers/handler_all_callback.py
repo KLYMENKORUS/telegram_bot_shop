@@ -9,6 +9,7 @@ from config import MESSAGES, KEYBOARD
 
 class HandlerAllCallback(Handler):
     """Класс обрабатывает входящие callback"""
+
     def __init__(self, bot: Bot, dp: Dispatcher):
         super().__init__(bot, dp)
         self.step = 0  # шаг в заказе
@@ -121,8 +122,7 @@ class HandlerAllCallback(Handler):
         count = await self.BD.select_all_product_id()
         quantity_order = await self.BD.select_order_quantity(count[self.step])
 
-        product = await self.BD.get_product(count[self.step])
-        quantity_product = product.quantity
+        quantity_product = await self.BD.select_product_quantity(count[self.step])
 
         if quantity_product > 0:
             quantity_order += 1; quantity_product -= 1
@@ -141,8 +141,7 @@ class HandlerAllCallback(Handler):
         count = await self.BD.select_all_product_id()
         quantity_order = await self.BD.select_order_quantity(count[self.step])
 
-        product = await self.BD.get_product(count[self.step])
-        quantity_product = product.quantity
+        quantity_product = await self.BD.select_product_quantity(count[self.step])
 
         if quantity_product > 0:
             quantity_order -= 1; quantity_product += 1
@@ -151,6 +150,32 @@ class HandlerAllCallback(Handler):
             await self.BD.update_product_value(count[self.step], quantity_product)
 
         await self.send_callback_order(callback, count[self.step], quantity_order)
+
+    async def pressed_btn_x(self, callback: CallbackQuery) -> None:
+        """Обрабатывает нажатие кнопки удаления товара в заказе"""
+
+        count = await self.BD.select_all_product_id()
+
+        if len(count) > 0:
+            quantity_order = await self.BD.select_order_quantity(count[self.step])
+            quantity_product = await self.BD.select_product_quantity(count[self.step])
+
+            quantity_product += quantity_order
+            await self.BD.delete_product_order(count[self.step])
+            await self.BD.update_product_value(count[self.step], quantity_product)
+            self.step -= 1
+
+        count = await self.BD.select_all_product_id()
+        if len(count) > 0:
+            quantity_order = await self.BD.select_order_quantity(count[self.step])
+            await self.send_callback_order(callback, count[self.step], quantity_order)
+        else:
+            await callback.answer(
+                MESSAGES.get('no_orders').
+                format(callback.from_user.first_name),
+                show_alert=True
+            )
+            await self.all_category(callback)
 
     def register_handler(self):
         # *********** Главное меню **********
@@ -176,3 +201,4 @@ class HandlerAllCallback(Handler):
         self.dp.register_callback_query_handler(self.pressed_btn_order, lambda c: c.data == 'order')
         self.dp.register_callback_query_handler(self.pressed_btn_up, lambda c: c.data == 'up')
         self.dp.register_callback_query_handler(self.pressed_btn_down, lambda c: c.data == 'down')
+        self.dp.register_callback_query_handler(self.pressed_btn_x, lambda c: c.data == 'remove')
