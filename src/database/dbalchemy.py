@@ -140,6 +140,14 @@ class DBMethods:
         )
         return result.scalars().first()
 
+    @connect_session_to_database(__async_session_maker)
+    async def delete_order_all(self, session: AsyncSession):
+        """Удаляет данные всего заказа"""
+        all_orders = await self.get_all_obj(Order)
+
+        for order in all_orders:
+            await session.execute(delete(Order).filter_by(id=order.id))
+
 
 class DBManager(metaclass=Singleton):
     """
@@ -286,6 +294,10 @@ class DBManager(metaclass=Singleton):
     async def delete_product_order(self, product_id: int) -> Order:
         """Удаление конкретного товара с бд"""
         return await self.__crud_db.delete_product_order(product_id=product_id)
+
+    async def delete_order_all(self) -> None:
+        """Удаляет данные всего заказа"""
+        await self.__crud_db.delete_order_all()
 
 
 

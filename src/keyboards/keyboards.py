@@ -1,4 +1,3 @@
-import asyncio
 from typing import Optional
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import KEYBOARD
@@ -50,19 +49,10 @@ class Keyboards:
 
         return self.markup
 
-    def info_menu(self) -> InlineKeyboardMarkup:
-        """Создает разметку кнопок в меню 'О магазине'"""
-
+    def back(self) -> InlineKeyboardMarkup:
+        """Создает разметку кнопки для возвращения"""
         self.markup = InlineKeyboardMarkup()
-        itm_btn_1 = self.set_inline_btn('<<', callback='back')
-        return self.markup.row(itm_btn_1)
-
-    def settings_menu(self) -> InlineKeyboardMarkup:
-        """Создает разметку кнопок в меню 'Настройки'"""
-
-        self.markup = InlineKeyboardMarkup()
-        itm_btn_1 = self.set_inline_btn('<<', callback='back')
-        return self.markup.row(itm_btn_1)
+        return self.markup.row(self.set_inline_btn('<<', callback='back'))
 
     def category_menu(self, *categories, role: str = None, action: str = None) -> InlineKeyboardMarkup:
         """Создает разметку кнопок в меню категорий товара и возвращает разметку"""

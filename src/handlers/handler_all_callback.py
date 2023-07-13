@@ -1,11 +1,9 @@
+from contextlib import suppress
 from aiogram import Bot, Dispatcher
 from aiogram.types import CallbackQuery
-from contextlib import suppress
-
 from aiogram.utils.exceptions import MessageNotModified
-
 from handlers import Handler
-from config import MESSAGES, KEYBOARD
+from config import MESSAGES, KEYBOARD, Utils
 
 
 class HandlerAllCallback(Handler):
@@ -15,6 +13,7 @@ class HandlerAllCallback(Handler):
         super().__init__(bot, dp)
         self.step = 0  # шаг в заказе
         self.__AMOUNT_ORDERS = None
+        self.utils = Utils(self.BD)
 
     async def __back_next_step(self, callback: CallbackQuery) -> None:
         with suppress(MessageNotModified):
@@ -31,7 +30,7 @@ class HandlerAllCallback(Handler):
         """
         await callback.message.edit_text(
             MESSAGES.get('trading_store'),
-            reply_markup=self.keyboards.info_menu()
+            reply_markup=self.keyboards.back()
         )
         await callback.answer()
 
@@ -42,7 +41,7 @@ class HandlerAllCallback(Handler):
         """
         await callback.message.edit_text(
             MESSAGES.get('settings'),
-            reply_markup=self.keyboards.settings_menu()
+            reply_markup=self.keyboards.back()
         )
         await callback.answer()
 
@@ -210,6 +209,18 @@ class HandlerAllCallback(Handler):
 
         await self.__back_next_step(callback)
 
+    async def pressed_btn_apply(self, callback: CallbackQuery) -> None:
+        """
+        Oбрабатывает нажатия на кнопку 'Оформить заказ'
+        """
+        await callback.message.edit_text(
+            MESSAGES.get('apply').format(
+                await self.utils.get_total_coast(),
+                await self.utils.get_total_quantity()
+            ), reply_markup=self.keyboards.back()
+        )
+        await self.BD.delete_order_all()
+
     def register_handler(self):
         # *********** Главное меню **********
         self.dp.register_callback_query_handler(
@@ -237,3 +248,4 @@ class HandlerAllCallback(Handler):
         self.dp.register_callback_query_handler(self.pressed_btn_x, lambda c: c.data == 'remove')
         self.dp.register_callback_query_handler(self.pressed_btn_back_step, lambda c: c.data == 'back_step')
         self.dp.register_callback_query_handler(self.pressed_btn_next_step, lambda c: c.data == 'next_step')
+        self.dp.register_callback_query_handler(self.pressed_btn_apply, lambda c: c.data == 'apply')
