@@ -10,6 +10,7 @@ DB_PORT = os.getenv('POSTGRES_PORT')
 DB_HOST = os.getenv('POSTGRES_HOST')
 
 TOKEN = os.getenv('TOKEN')
+TOKEN_PAY = os.getenv('TOKEN_PAY')
 IS_ADMIN_ID = os.getenv('IS_ADMIN_ID')
 
 DATABASE_URL = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'

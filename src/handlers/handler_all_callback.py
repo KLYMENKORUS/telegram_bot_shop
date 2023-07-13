@@ -214,12 +214,24 @@ class HandlerAllCallback(Handler):
         Oбрабатывает нажатия на кнопку 'Оформить заказ'
         """
         await callback.message.edit_text(
+            MESSAGES.get('select_payments').format(
+                callback.from_user.first_name
+            ), reply_markup=self.keyboards.payments_menu()
+        )
+        await callback.answer()
+
+    async def pressed_btn_post(self, callback: CallbackQuery) -> None:
+        """
+        Обрабатывает нажатие кнопки ('При получении')
+        """
+        await callback.message.edit_text(
             MESSAGES.get('apply').format(
                 await self.utils.get_total_coast(),
                 await self.utils.get_total_quantity()
             ), reply_markup=self.keyboards.back()
         )
         await self.BD.delete_order_all()
+        await callback.answer()
 
     def register_handler(self):
         # *********** Главное меню **********
@@ -236,8 +248,6 @@ class HandlerAllCallback(Handler):
             self.all_category, lambda c: c.data == 'choose_goods'
         )
 
-        # ********** меню категории товара **********
-
         self.dp.register_callback_query_handler(
             self.view_all_product,
             lambda c: c.data.startswith('select_cat')
@@ -249,3 +259,4 @@ class HandlerAllCallback(Handler):
         self.dp.register_callback_query_handler(self.pressed_btn_back_step, lambda c: c.data == 'back_step')
         self.dp.register_callback_query_handler(self.pressed_btn_next_step, lambda c: c.data == 'next_step')
         self.dp.register_callback_query_handler(self.pressed_btn_apply, lambda c: c.data == 'apply')
+        self.dp.register_callback_query_handler(self.pressed_btn_post, lambda c: c.data == 'post')

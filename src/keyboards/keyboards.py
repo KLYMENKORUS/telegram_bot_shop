@@ -97,6 +97,19 @@ class Keyboards:
 
         return self.markup
 
+    def payments_menu(self) -> InlineKeyboardMarkup:
+        """
+        Создает разметку кнопок для выбора оплаты заказа и возвращает разметку
+        """
+        self.markup = InlineKeyboardMarkup()
+        itm_btn_1 = self.set_inline_btn('POST', 'post',)
+        itm_btn_2 = self.set_inline_btn('BUY', 'buy',)
+        itm_btn_3 = self.set_inline_btn('<<', 'back')
+
+        self.markup.add(itm_btn_1, itm_btn_2).add(itm_btn_3)
+
+        return self.markup
+
     def view_all_products(self, *products, role: str = None) -> InlineKeyboardMarkup:
         """Создает разметку кнопок для вывода всех товаров и возвращает её"""
 
